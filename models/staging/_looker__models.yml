@@ -193,6 +193,7 @@ models:
         data_tests: [unique, not_null]
       - name: cost
         description: Unit cost to the business (USD). Used as cost of goods sold.
+        data_tests: [not_null] # products.cost_of_goods_sold would silently read 0 if this were null
       - name: category
         description: Merchandising category, e.g. Jeans, Swim, Outerwear & Coats.
       - name: name
