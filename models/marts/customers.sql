@@ -1,3 +1,5 @@
+{%- set order_items_status = 'Complete' -%}
+
 with customers as (
     select
         id as user_id,
@@ -16,28 +18,7 @@ completed_items as (
         min(created_at) as first_order_completed_at,
         max(created_at) as last_order_completed_at
     from {{ ref('stg_looker__order_items') }}
-    where status = 'Complete'
-    group by user_id
-),
-
-orders as (
-    select
-        user_id,
-        count(distinct order_id) as num_orders,
-        count(distinct case when status = 'Shipped' then order_id end) as num_orders_shipped,
-        count(distinct case when status = 'Complete' then order_id end) as num_orders_complete,
-        count(distinct case when status = 'Processing' then order_id end) as num_orders_processing,
-        count(distinct case when status = 'Cancelled' then order_id end) as num_orders_cancelled,
-        count(distinct case when status = 'Returned' then order_id end) as num_orders_returned
-    from {{ ref('stg_looker__orders') }}
-    group by user_id
-),
-
-web_sessions as (
-    select
-        user_id,
-        count(distinct session_id) as num_web_sessions
-    from {{ ref('stg_looker__events') }}
+    where status = '{{ order_items_status }}'
     group by user_id
 )
 
@@ -51,14 +32,9 @@ select
     completed_items.total_items_purchased,
     completed_items.first_order_completed_at,
     completed_items.last_order_completed_at,
-    orders.num_orders,
-    orders.num_orders_shipped,
-    orders.num_orders_complete,
-    orders.num_orders_processing,
-    orders.num_orders_cancelled,
-    orders.num_orders_returned,
-    web_sessions.num_web_sessions
+    orders.* exclude (user_id),
+    web_sessions.* exclude (user_id)
 from customers
 left join completed_items on customers.user_id = completed_items.user_id
-left join orders on customers.user_id = orders.user_id
-left join web_sessions on customers.user_id = web_sessions.user_id
+left join {{ ref('int_orders__pivoted') }} as orders on customers.user_id = orders.user_id
+left join {{ ref('int_events__pivoted') }} as web_sessions on customers.user_id = web_sessions.user_id

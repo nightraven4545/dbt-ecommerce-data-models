@@ -50,6 +50,26 @@ models:
         description: Orders Returned.
       - name: num_web_sessions
         description: Distinct website sessions while logged in.
+      - name: num_sessions_from_adwords
+        description: Logged-in sessions that arrived via Adwords.
+      - name: num_sessions_from_email
+        description: Logged-in sessions that arrived via Email.
+      - name: num_sessions_from_facebook
+        description: Logged-in sessions that arrived via Facebook.
+      - name: num_sessions_from_organic
+        description: Logged-in sessions that arrived via Organic.
+      - name: num_sessions_from_youtube
+        description: Logged-in sessions that arrived via YouTube.
+      - name: num_sessions_on_chrome
+        description: Logged-in sessions on Chrome browser.
+      - name: num_sessions_on_firefox
+        description: Logged-in sessions on Firefox browser.
+      - name: num_sessions_on_safari
+        description: Logged-in sessions on Safari browser.
+      - name: num_sessions_on_ie
+        description: Logged-in sessions on IE browser.
+      - name: num_sessions_on_other
+        description: Logged-in sessions on any other browsers.
 
   - name: products
     description: >
@@ -73,8 +93,11 @@ models:
       - name: product_department
         description: Men or Women.
       - name: sales_amount
-        description: Revenue from the product's order lines (USD).
+        description: Revenue from the product's order lines (USD); 0 if never sold.
+        data_tests: [not_null]
       - name: cost_of_goods_sold
-        description: Cost of the units sold (USD).
+        description: Cost of the units sold (USD); 0 if never sold.
+        data_tests: [not_null]
       - name: profit
         description: sales_amount minus cost_of_goods_sold (USD).
+        data_tests: [not_null]

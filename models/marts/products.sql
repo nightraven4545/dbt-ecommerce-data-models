@@ -22,16 +22,22 @@ sales as (
         sum(sale_price) as sales_amount
     from {{ ref('stg_looker__order_items') }}
     group by product_id
+),
+
+final as (
+    select
+        products.product_id,
+        products.product_name,
+        products.product_category,
+        products.product_department,
+        {{ coalesce_and_round('sales.sales_amount') }} as sales_amount,
+        {{ coalesce_and_round('sold_inventory.cost_of_goods_sold') }} as cost_of_goods_sold
+    from products
+    left join sold_inventory on products.product_id = sold_inventory.product_id
+    left join sales on products.product_id = sales.product_id
 )
 
 select
-    products.product_id,
-    products.product_name,
-    products.product_category,
-    products.product_department,
-    sales.sales_amount,
-    sold_inventory.cost_of_goods_sold,
-    sales.sales_amount - sold_inventory.cost_of_goods_sold as profit
-from products
-left join sold_inventory on products.product_id = sold_inventory.product_id
-left join sales on products.product_id = sales.product_id
+    *,
+    round(sales_amount - cost_of_goods_sold, 2) as profit
+from final
