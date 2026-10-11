@@ -93,11 +93,36 @@ models:
       - name: product_department
         description: Men or Women.
       - name: sales_amount
-        description: Revenue from the product's order lines (USD); 0 if never sold.
+        description: Revenue from order lines that were not cancelled or returned (USD); 0 if never sold.
         data_tests: [not_null]
       - name: cost_of_goods_sold
-        description: Cost of the units sold (USD); 0 if never sold.
+        description: >
+          Units in those same order lines times the product's unit cost (USD); 0 if never sold.
+          Not taken from inventory_items, whose links to order lines are unreliable in this dataset.
         data_tests: [not_null]
       - name: profit
         description: sales_amount minus cost_of_goods_sold (USD).
         data_tests: [not_null]
+
+unit_tests:
+  - name: products_profit_counts_only_items_that_stayed_sold
+    description: >
+      Product 1 (unit cost 10) has four order lines: Complete 25, Shipped 30, Cancelled 99, Returned 40.
+      Cancelled and returned lines earn nothing and cost nothing, so sales = 55, COGS = 2 x 10 = 20, profit = 35.
+      Product 2 never sold, so it reports zeros, not nulls.
+    model: products
+    given:
+      - input: ref('stg_looker__products')
+        rows:
+          - {id: 1, cost: 10, category: Jeans}
+          - {id: 2, cost: 7, category: Swim}
+      - input: ref('stg_looker__order_items')
+        rows:
+          - {product_id: 1, status: Complete, sale_price: 25}
+          - {product_id: 1, status: Shipped, sale_price: 30}
+          - {product_id: 1, status: Cancelled, sale_price: 99}
+          - {product_id: 1, status: Returned, sale_price: 40}
+    expect:
+      rows:
+        - {product_id: 1, sales_amount: 55, cost_of_goods_sold: 20, profit: 35}
+        - {product_id: 2, sales_amount: 0, cost_of_goods_sold: 0, profit: 0}
