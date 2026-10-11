@@ -1,0 +1,12 @@
+name: looker_ecommerce
+version: '1.0.0'
+profile: looker_ecommerce
+
+models:
+  looker_ecommerce:
+    staging:
+      +materialized: table # sources are remote CSVs; a view would re-download them on every query
+    intermediate:
+      +materialized: ephemeral
+    marts:
+      +materialized: table
