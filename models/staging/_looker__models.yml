@@ -1,0 +1,209 @@
+models:
+  - name: stg_looker__distribution_centers
+    description: The 10 US warehouses that hold inventory. Loaded from a seed because it is small and static.
+    columns:
+      - name: id
+        description: Distribution center key; referenced by products and inventory items.
+        data_tests: [unique, not_null]
+      - name: name
+        description: City and state of the warehouse, e.g. "Memphis TN".
+        data_tests: [not_null]
+      - name: latitude
+        description: Warehouse latitude (WGS84).
+      - name: longitude
+        description: Warehouse longitude (WGS84).
+
+  - name: stg_looker__users
+    description: One row per registered customer, with demographics, address and the channel that acquired them.
+    columns:
+      - name: id
+        description: Customer key.
+        data_tests: [unique, not_null]
+      - name: first_name
+        description: Customer first name (synthetic).
+        data_tests: [not_null]
+      - name: last_name
+        description: Customer last name (synthetic).
+        data_tests: [not_null]
+      - name: email
+        description: Customer email address (synthetic).
+        data_tests: [not_null]
+      - name: age
+        description: Age in years at sign-up.
+        data_tests: [not_null]
+      - name: gender
+        description: "F or M."
+      - name: state
+        description: State or region of the customer's address.
+      - name: street_address
+        description: Street line of the customer's address.
+      - name: postal_code
+        description: Postal code of the customer's address.
+      - name: city
+        description: City of the customer's address.
+      - name: country
+        description: Country of the customer's address.
+      - name: latitude
+        description: Latitude of the customer's address.
+      - name: longitude
+        description: Longitude of the customer's address.
+      - name: traffic_source
+        description: Marketing channel that brought the customer in at sign-up.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Display', 'Email', 'Facebook', 'Organic', 'Search']
+      - name: created_at
+        description: When the customer account was created.
+        data_tests: [not_null]
+
+  - name: stg_looker__events
+    description: Website clickstream, one row per page event. Anonymous visitors have no user_id.
+    columns:
+      - name: id
+        description: Event key.
+        data_tests: [unique, not_null]
+      - name: user_id
+        description: Customer who triggered the event; null for anonymous visitors.
+      - name: sequence_number
+        description: Position of the event within its session, starting at 1.
+      - name: session_id
+        description: Browsing session the event belongs to.
+        data_tests: [not_null]
+      - name: created_at
+        description: When the event happened.
+        data_tests: [not_null]
+      - name: ip_address
+        description: Visitor IP address (synthetic).
+        data_tests: [not_null]
+      - name: city
+        description: City geolocated from the IP address.
+      - name: state
+        description: State geolocated from the IP address.
+      - name: postal_code
+        description: Postal code geolocated from the IP address.
+      - name: browser
+        description: Visitor browser (Chrome, Firefox, Safari, IE, Other).
+      - name: traffic_source
+        description: >
+          Channel that drove this visit. Uses a different vocabulary from
+          users.traffic_source because it tracks visits, not sign-ups.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Adwords', 'Email', 'Facebook', 'Organic', 'YouTube']
+      - name: uri
+        description: Page path that was requested.
+      - name: event_type
+        description: What the visitor did, e.g. home, product, cart, purchase.
+
+  - name: stg_looker__inventory_items
+    description: One row per physical unit stocked in a warehouse, with the product attributes copied at stocking time.
+    columns:
+      - name: id
+        description: Inventory unit key.
+        data_tests: [unique, not_null]
+      - name: product_id
+        description: Product this unit is an instance of.
+        data_tests: [not_null]
+      - name: created_at
+        description: When the unit arrived in stock.
+        data_tests: [not_null]
+      - name: sold_at
+        description: When the unit sold; null while still in stock.
+      - name: cost
+        description: What the business paid for this unit (USD).
+      - name: product_category
+        description: Product category at stocking time.
+      - name: product_name
+        description: Product name at stocking time.
+      - name: product_brand
+        description: Product brand at stocking time.
+      - name: product_retail_price
+        description: List price at stocking time (USD).
+      - name: product_department
+        description: Men or Women.
+      - name: product_sku
+        description: Stock-keeping unit code.
+      - name: product_distribution_center_id
+        description: Warehouse holding the unit.
+
+  - name: stg_looker__order_items
+    description: One row per product line on an order. This is where revenue lives.
+    columns:
+      - name: id
+        description: Order line key.
+        data_tests: [unique, not_null]
+      - name: order_id
+        description: Order the line belongs to.
+      - name: user_id
+        description: Customer who placed the order.
+      - name: product_id
+        description: Product sold on this line.
+      - name: inventory_item_id
+        description: >
+          Inventory unit nominally fulfilling the line. Unreliable in this dataset:
+          the upstream generator links lines to unsold units, so do not use it for cost.
+      - name: status
+        description: Line status (Processing, Shipped, Complete, Cancelled, Returned).
+      - name: created_at
+        description: When the line was ordered.
+      - name: shipped_at
+        description: When the line shipped; null if not yet shipped.
+      - name: delivered_at
+        description: When the line was delivered; null if not yet delivered.
+      - name: returned_at
+        description: When the line was returned; null unless returned.
+      - name: sale_price
+        description: Price the customer paid for the line (USD).
+
+  - name: stg_looker__orders
+    description: One row per customer order (order header).
+    columns:
+      - name: order_id
+        description: Order key.
+        data_tests: [unique, not_null]
+      - name: user_id
+        description: Customer who placed the order.
+        data_tests: [not_null]
+      - name: status
+        description: Order status (Processing, Shipped, Complete, Cancelled, Returned).
+        data_tests: [not_null]
+      - name: gender
+        description: Gender of the ordering customer, copied onto the order.
+        data_tests: [not_null]
+      - name: created_at
+        description: When the order was placed.
+      - name: returned_at
+        description: When the order was returned; null unless returned.
+      - name: shipped_at
+        description: When the order shipped; null if not yet shipped.
+      - name: delivered_at
+        description: When the order was delivered; null if not yet delivered.
+      - name: num_of_item
+        description: Number of product lines on the order.
+
+  - name: stg_looker__products
+    description: Product catalogue, one row per product.
+    columns:
+      - name: id
+        description: Product key.
+        data_tests: [unique, not_null]
+      - name: cost
+        description: Unit cost to the business (USD). Used as cost of goods sold.
+      - name: category
+        description: Merchandising category, e.g. Jeans, Swim, Outerwear & Coats.
+      - name: name
+        description: Product name.
+      - name: brand
+        description: Product brand.
+      - name: retail_price
+        description: List price (USD).
+      - name: department
+        description: Men or Women.
+      - name: sku
+        description: Stock-keeping unit code.
+      - name: distribution_center_id
+        description: Warehouse that stocks the product.
