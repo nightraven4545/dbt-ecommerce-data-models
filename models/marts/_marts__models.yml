@@ -29,9 +29,9 @@ models:
               arguments:
                 values: ['Display', 'Email', 'Facebook', 'Organic', 'Search']
       - name: total_amount_spent
-        description: Revenue from the customer's Complete order lines (USD); null if none.
+        description: Revenue from the customer's Complete order lines (USD); null if none. Partial in this sample, which holds about half of all order lines.
       - name: total_items_purchased
-        description: Number of Complete order lines; null if none.
+        description: Number of Complete order lines; null if none. Partial in this sample (about half of all order lines).
       - name: first_order_completed_at
         description: Order date of the customer's earliest Complete order line.
       - name: last_order_completed_at
@@ -49,7 +49,7 @@ models:
       - name: num_orders_returned
         description: Orders Returned.
       - name: num_web_sessions
-        description: Distinct website sessions while logged in.
+        description: Distinct logged-in website sessions. The events sample holds about 2% of events, so treat this as a relative signal, not a full visit count.
       - name: num_sessions_from_adwords
         description: Logged-in sessions that arrived via Adwords.
       - name: num_sessions_from_email
@@ -73,7 +73,7 @@ models:
 
   - name: products
     description: >
-      One row per product with lifetime sales, cost of goods sold and profit.
+      One row per product with sales, cost of goods sold and profit.
       Built for merchandising and margin analysis.
     columns:
       - name: product_id
@@ -93,7 +93,7 @@ models:
       - name: product_department
         description: Men or Women.
       - name: sales_amount
-        description: Revenue from order lines that were not cancelled or returned (USD); 0 if never sold.
+        description: Revenue from order lines that were not cancelled or returned (USD); 0 if never sold. Covers the sampled order lines (about half of all lines); margins are unaffected.
         data_tests: [not_null]
       - name: cost_of_goods_sold
         description: >

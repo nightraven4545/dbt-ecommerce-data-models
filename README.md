@@ -4,7 +4,7 @@
 
 This project turns raw e-commerce exports into tested, documented **customer** and **product** tables. Together they answer three questions: who buys, how they found us, and what actually makes money.
 
-It is built with dbt-core 1.12 on DuckDB, needs no warehouse or credentials, and runs with one command. On every push, CI rebuilds the project, runs every test and republishes the data catalog.
+It is built with dbt-core 1.12 on DuckDB, needs no warehouse or credentials, and runs with one command. CI rebuilds the project and runs every test on each pull request and each push to `main`; pushes to `main` also republish the data catalog.
 
 **[Browse the live data catalog and lineage graph →](https://nightraven4545.github.io/dbt-ecommerce-data-models/)**
 
@@ -24,15 +24,15 @@ Across all 29,120 products, the margin is **50.7%**: $789k profit on $1.56M of s
 
 **Where do customers come from, and does the channel matter?** (from `customers`)
 
-| Channel | Customers | Share | With a completed purchase | Avg spend per buyer (USD) |
-|---|---:|---:|---:|---:|
-| Search | 34,981 | 70.0% | 16.7% | 31.15 |
-| Organic | 7,619 | 15.2% | 16.8% | 30.81 |
-| Facebook | 2,885 | 5.8% | 16.9% | 30.55 |
-| Email | 2,497 | 5.0% | 16.7% | 31.71 |
-| Display | 2,017 | 4.0% | 16.3% | 31.58 |
+| Channel | Customers | Share | With a completed order |
+|---|---:|---:|---:|
+| Search | 34,981 | 70.0% | 27.5% |
+| Organic | 7,619 | 15.2% | 27.2% |
+| Facebook | 2,885 | 5.8% | 27.8% |
+| Email | 2,497 | 5.0% | 26.8% |
+| Display | 2,017 | 4.0% | 27.5% |
 
-Search brings in 70% of customers. Conversion and spend are flat across channels, so the channel mix decides how many customers arrive, not how good they are.
+Search brings in 70% of customers. Conversion is flat across channels, so the channel mix decides how many customers arrive, not how good they are.
 
 ## How it works
 
@@ -70,7 +70,7 @@ You need Python 3.10 or newer and an internet connection.
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-dbt build                          # seed, models, snapshots, 46 data tests, 1 unit test
+dbt build                          # seed, models, snapshots, 47 data tests, 1 unit test
 dbt docs generate && dbt docs serve
 ```
 
@@ -78,13 +78,13 @@ Use `dbt build` rather than `dbt test`. The unit test needs the staging tables t
 
 ## Data quality
 
-- **46 data tests** cover:
+- **47 data tests** cover:
   - unique, non-null keys on every staging model and mart
   - allowed values on marketing channels
   - mart-to-staging relationships
-  - non-null money columns
+  - non-null money columns, including product cost at the source, so a missing cost can't silently become zero COGS
 - **1 unit test** pins the profit logic with hand-made inputs. It fails if anyone reintroduces the bug described below.
-- **CI** (GitHub Actions) runs the full build on every push and pull request. On `main` it also publishes the docs site to GitHub Pages.
+- **CI** (GitHub Actions) runs the full build on every pull request and every push to `main`. Pushes to `main` also publish the docs site to GitHub Pages.
 
 ## Engineering notes: what I changed from the course
 
@@ -103,6 +103,7 @@ This project started as DataCamp's [Case Study: Building E-Commerce Data Models 
    - a `longtitude` column typo
    - mixed-case column names
    - `events.user_id` was inferred as a float; it is now cast to an integer
+   - three order timestamps loaded without a timezone, so on a machine outside UTC some orders appeared to ship before they were placed; they are now timezone-aware
    - a Windows race when DuckDB auto-installed its HTTP extension from parallel threads; the extension is now pinned in `profiles.yml`
 
 ## Course concepts → files
@@ -138,6 +139,9 @@ profiles.yml               local DuckDB file, no secrets
 
 - **TheLook eCommerce** is a synthetic dataset published by Looker/Google as the BigQuery public dataset `bigquery-public-data.thelook_ecommerce`. It contains no real people.
 - This project reads the sample from DataCamp's course directly from its public URLs at build time. The raw files are not stored in this repository.
-- The `events`, `inventory_items`, `order_items` and `users` files are truncated samples, so some orders reference customers who are not in the sample. Treat the figures as illustrative.
+- The `events`, `inventory_items`, `order_items` and `users` files are truncated samples, so treat the figures as illustrative:
+  - `order_items` holds about half of all order lines, so absolute sales and spend are partial. Margins and order counts are unaffected; order counts come from the complete `orders` file.
+  - `events` holds about 2% of events, so session counts are a relative signal only.
+  - some orders reference customers who are not in the `users` sample.
 - `seeds/looker__distribution_centers.csv` matches the generator seed in [GoogleCloudPlatform/public-datasets-pipelines](https://github.com/GoogleCloudPlatform/public-datasets-pipelines/tree/main/datasets/thelook_ecommerce), which is licensed under Apache-2.0.
 - The snapshots currently hold one version per row. The source files are static and CI starts from a fresh database, so history only builds up when they point at a live source.
