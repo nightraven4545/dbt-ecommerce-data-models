@@ -4,4 +4,5 @@ looker_ecommerce:
     dev:
       type: duckdb
       path: "{{ env_var('DBT_DUCKDB_PATH', 'dev.duckdb') }}"
+      extensions: [httpfs] # install once up front; parallel auto-installs race on Windows
       threads: 4

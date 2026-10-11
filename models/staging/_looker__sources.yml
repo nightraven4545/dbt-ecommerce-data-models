@@ -1,0 +1,24 @@
+sources:
+  - name: looker_ecommerce
+    description: >
+      TheLook synthetic e-commerce data (DataCamp sample). No warehouse load step:
+      dbt-duckdb reads each CSV straight from its public URL at build time.
+    tables:
+      - name: users
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/bd0c5e7c72db90b52d4d018aa0dbce7379229a25/users%20short.csv', sample_size=-1)"
+      - name: events
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/94ec4215a535899f696c67593ae42cd43046a497/events%20short.csv', sample_size=-1)"
+      - name: inventory_items
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/eb82f3bbbc2ef2216cfaae06f1c8c609f0a3ef74/inventory_items%20short.csv', sample_size=-1)"
+      - name: order_items
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/9013daf40127145ad2395895c9954c5f946df895/order_items%20short.csv', sample_size=-1)"
+      - name: orders
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/b07b3e985914e758d8a4d3fafa98af9d0d9adde2/orders.csv', sample_size=-1)"
+      - name: products
+        config:
+          external_location: "read_csv('https://assets.datacamp.com/production/repositories/6886/datasets/7ecf45c9b79edc3b55efa0fde84a81895b9a1caa/products.csv', sample_size=-1)"
