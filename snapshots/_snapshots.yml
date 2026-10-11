@@ -1,0 +1,18 @@
+snapshots:
+  - name: orders_snapshot
+    relation: source('looker_ecommerce', 'orders')
+    description: Type-2 history of order status changes (processing → shipped → delivered / returned).
+    config:
+      schema: snapshots
+      unique_key: order_id
+      strategy: check # created_at never changes, so a timestamp strategy on it would never detect anything
+      check_cols: [status, shipped_at, delivered_at, returned_at]
+
+  - name: inventory_snapshot
+    relation: source('looker_ecommerce', 'inventory_items')
+    description: Type-2 history of inventory units moving from in-stock to sold.
+    config:
+      schema: snapshots
+      unique_key: id
+      strategy: check
+      check_cols: [sold_at]
