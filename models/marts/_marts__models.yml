@@ -1,0 +1,80 @@
+models:
+  - name: customers
+    description: >
+      One row per customer: who they are, how they found us, what they bought and how
+      often they visit. Built for segmentation and lifetime-value reporting.
+    columns:
+      - name: user_id
+        description: Customer key (same as stg_looker__users.id).
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_looker__users')
+                field: id
+      - name: customer_first_name
+        description: Customer first name.
+        data_tests: [not_null]
+      - name: customer_last_name
+        description: Customer last name.
+        data_tests: [not_null]
+      - name: customer_country
+        description: Country of the customer's address.
+      - name: customer_acquisition_channel
+        description: Marketing channel that brought the customer in at sign-up.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Display', 'Email', 'Facebook', 'Organic', 'Search']
+      - name: total_amount_spent
+        description: Revenue from the customer's Complete order lines (USD); null if none.
+      - name: total_items_purchased
+        description: Number of Complete order lines; null if none.
+      - name: first_order_completed_at
+        description: Order date of the customer's earliest Complete order line.
+      - name: last_order_completed_at
+        description: Order date of the customer's latest Complete order line.
+      - name: num_orders
+        description: Orders placed, any status; null if the customer never ordered.
+      - name: num_orders_shipped
+        description: Orders currently Shipped.
+      - name: num_orders_complete
+        description: Orders currently Complete.
+      - name: num_orders_processing
+        description: Orders currently Processing.
+      - name: num_orders_cancelled
+        description: Orders Cancelled.
+      - name: num_orders_returned
+        description: Orders Returned.
+      - name: num_web_sessions
+        description: Distinct website sessions while logged in.
+
+  - name: products
+    description: >
+      One row per product with lifetime sales, cost of goods sold and profit.
+      Built for merchandising and margin analysis.
+    columns:
+      - name: product_id
+        description: Product key (same as stg_looker__products.id).
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_looker__products')
+                field: id
+      - name: product_name
+        description: Product name.
+      - name: product_category
+        description: Merchandising category.
+        data_tests: [not_null]
+      - name: product_department
+        description: Men or Women.
+      - name: sales_amount
+        description: Revenue from the product's order lines (USD).
+      - name: cost_of_goods_sold
+        description: Cost of the units sold (USD).
+      - name: profit
+        description: sales_amount minus cost_of_goods_sold (USD).
