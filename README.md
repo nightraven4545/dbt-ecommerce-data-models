@@ -4,9 +4,9 @@
 
 This project turns raw e-commerce exports into tested, documented **customer** and **product** tables. Together they answer three questions: who buys, how they found us, and what actually makes money.
 
-It is built with dbt-core 1.12 on DuckDB, needs no warehouse or credentials, and runs with one command. CI rebuilds the project and runs every test on each pull request and each push to `main`; pushes to `main` also republish the data catalog.
+It is built with dbt-core 1.12 on DuckDB, needs no warehouse or credentials, and runs with one command. CI rebuilds the project and runs every test on each pull request and each push to `main`. Vercel runs the same build to publish the case-study page and the data catalog.
 
-**[Read the case study →](https://dbt-ecommerce-data-models.vercel.app/)** · [Browse the live data catalog and lineage graph](https://nightraven4545.github.io/dbt-ecommerce-data-models/)
+**[Read the case study →](https://dbt-ecommerce-data-models.vercel.app/)** · [Browse the live data catalog and lineage graph](https://dbt-ecommerce-data-models.vercel.app/docs/)
 
 ## What it answers
 
@@ -84,7 +84,7 @@ Use `dbt build` rather than `dbt test`. The unit test needs the staging tables t
   - mart-to-staging relationships
   - non-null money columns, including product cost at the source, so a missing cost can't silently become zero COGS
 - **1 unit test** pins the profit logic with hand-made inputs. It fails if anyone reintroduces the bug described below.
-- **CI** (GitHub Actions) runs the full build on every pull request and every push to `main`. Pushes to `main` also publish the docs site to GitHub Pages.
+- **CI** (GitHub Actions) runs the full build on every pull request and every push to `main`. Vercel builds every push too: pull requests get a preview URL, and `main` goes to production only if every test passes.
 
 ## Engineering notes: what I changed from the course
 
@@ -124,7 +124,7 @@ This project started as DataCamp's [Case Study: Building E-Commerce Data Models 
 ## Project layout
 
 ```
-.github/workflows/ci.yml   build, test, publish docs
+.github/workflows/ci.yml   build and test
 macros/                    coalesce_and_round
 models/staging/            sources, 7 staging models, docs + tests
 models/intermediate/       Jinja-pivoted helpers (ephemeral)
