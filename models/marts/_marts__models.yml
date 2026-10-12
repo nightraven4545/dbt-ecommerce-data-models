@@ -126,3 +126,15 @@ unit_tests:
       rows:
         - {product_id: 1, sales_amount: 55, cost_of_goods_sold: 20, profit: 35}
         - {product_id: 2, sales_amount: 0, cost_of_goods_sold: 0, profit: 0}
+
+exposures:
+  - name: project_site
+    label: Project site
+    type: analysis
+    url: https://dbt-ecommerce-data-models.vercel.app/
+    description: Public case-study page. Its figures (margins, category and channel tables) come from these two marts.
+    depends_on:
+      - ref('products')
+      - ref('customers')
+    owner:
+      name: nightraven4545
