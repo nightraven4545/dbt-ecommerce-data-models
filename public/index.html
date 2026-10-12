@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Product margin, corrected twice: e-commerce data models in dbt</title>
+<meta name="description" content="A rebuild of DataCamp's e-commerce dbt case study. The course's profit logic was wrong twice; the fixed model gives a 50.7% margin, pinned by a unit test.">
+<link rel="canonical" href="https://dbt-ecommerce-data-models.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dbt-ecommerce-data-models.vercel.app/">
+<meta property="og:title" content="Product margin, corrected twice">
+<meta property="og:description" content="A rebuild of DataCamp's e-commerce dbt case study. The course's profit logic was wrong twice; the fixed model gives a 50.7% margin, pinned by a unit test.">
+<meta property="og:image" content="https://dbt-ecommerce-data-models.vercel.app/og.png">
+<meta property="og:image:alt" content="The margin 100% and 82.4% struck through in red, followed by the corrected 50.7%.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231B2836'/%3E%3Cpath d='M7 17h18' stroke='%23EE7B76' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preload" href="archivo.woff2" as="font" type="font/woff2" crossorigin>
+<!-- ponytail: figures copied from the products/customers marts at 5fb1df9; the sources are static, so they only change if a model does. Re-run the audit queries then; upgrade path: render at build time with Jinja2 from dev.duckdb. -->
+<style>
+@font-face{font-family:Archivo;src:url(archivo.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+:root{--paper:#F5F7F3;--ink:#1B2836;--pencil:#56636F;--data:#2A5A8F;--data-2:#7290B5;--red:#C0311F;--tint:#E5EDE2;--rule:rgb(86 99 111/.3)}
+@media (prefers-color-scheme:dark){:root{--paper:#15212C;--ink:#E6ECE6;--pencil:#9EABB4;--data:#8FB4E0;--data-2:#4F739B;--red:#EE7B76;--tint:#1C2B35;--rule:rgb(158 171 180/.3)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1.125rem/1.5 Archivo,system-ui,sans-serif;font-stretch:100%;-webkit-text-size-adjust:100%}
+main,footer{max-width:64rem;margin:0 auto;padding:0 1rem}
+@media (min-width:40rem){main,footer{padding:0 2rem}}
+h1,h2{font-stretch:125%;font-weight:600;line-height:1.15;margin:0}
+h1{font-size:2.25rem}
+h2{font-size:1.5rem;margin-bottom:1rem}
+h3{font-size:1.125rem;font-weight:600;margin:2.5rem 0 .25rem}
+p{max-width:38rem;margin:0 0 1rem}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.2em}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--data);outline-offset:3px}
+.small,table,figcaption{font-size:.875rem;line-height:1.45}
+.muted{color:var(--pencil)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+section{margin-top:6rem}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.875em}
+pre{background:var(--tint);padding:1rem;margin:0;overflow-x:auto;line-height:1.5}
+mark{background:var(--paper);color:inherit;outline:1px solid var(--rule)}
+
+/* the one signature: a single red strike meaning "this value no longer counts" */
+s,.was{text-decoration:none;position:relative;color:var(--pencil)}
+s::after,.was::after{content:"";position:absolute;left:-.04em;right:-.04em;top:52%;border-top:max(.06em,2px) solid var(--red)}
+
+/* hero */
+.hero{padding-top:5rem}
+.figures{list-style:none;padding:0;margin:3rem 0;display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
+.fig{display:block;font-stretch:62%;font-weight:800;font-size:clamp(3.5rem,10vw,8rem);line-height:.9;font-variant-numeric:lining-nums;margin-bottom:1rem;width:max-content}
+.figures p{font-size:1rem;max-width:20rem}
+.links a{margin-right:1.5rem;white-space:nowrap}
+@media (prefers-reduced-motion:no-preference){
+  .hero s::after{transform:scaleX(0);transform-origin:0 50%;animation:strike .42s cubic-bezier(.3,.7,.3,1) .3s forwards}
+  .hero li:nth-child(2) s::after{animation-delay:.9s}
+}
+@keyframes strike{to{transform:none}}
+
+/* ledger bars: one shared $0 to $2.1M scale */
+.ledger{list-style:none;padding:0;margin:2rem 0}
+.ledger li{margin-bottom:1.5rem}
+.ledger .head{display:flex;justify-content:space-between;gap:1rem;max-width:none;margin:0 0 .375rem}
+.ledger .head b{font-weight:600}
+.bar{display:flex;gap:2px;height:20px}
+.bar i{flex:0 1 calc(var(--w)*1%)}
+.bar i:last-child{border-radius:0 4px 4px 0}
+.cost{background:var(--data-2)}
+.profit{background:var(--data)}
+.ghost{position:relative;background:var(--rule)}
+.ghost::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px solid var(--red)}
+.ledger .nums{margin:.375rem 0 0}
+.key{display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;padding:0;margin:0 0 2rem;list-style:none}
+.key i{display:inline-block;width:.75rem;height:.75rem;margin-right:.375rem;vertical-align:-.05rem}
+
+/* tables */
+table{border-collapse:collapse;font-variant-numeric:tabular-nums}
+caption{text-align:left;padding-bottom:.75rem;color:var(--pencil)}
+th,td{padding:.375rem .75rem .375rem 0;text-align:left;vertical-align:middle}
+thead th{font-weight:400;color:var(--pencil);border-bottom:1px solid var(--rule)}
+td.n,th.n{text-align:right}
+figure{margin:2rem 0}
+figcaption{margin-top:.5rem;color:var(--pencil)}
+
+.slip{min-width:16rem}
+.slip tfoot th,.slip tfoot td{border-top:1px solid var(--rule);font-weight:600}
+.slip tfoot s{font-weight:400;margin-left:.75rem}
+
+.faults{display:grid;gap:0 3rem}
+@media (min-width:48rem){.faults{grid-template-columns:1fr 1fr}}
+.wasnow{display:flex;gap:1.5rem;font-size:.875rem;margin-top:.5rem}
+
+/* category dot plot, 35% to 65% axis, reference at 50.7% */
+.dots{width:100%;table-layout:fixed}
+.dots col.c{width:32%}.dots col.s{width:5.5rem}.dots col.m{width:4rem}
+.dots tbody th{font-weight:400;color:var(--pencil)}
+.dots tbody tr.em th{color:var(--ink);font-weight:600}
+.plot{position:relative;padding:0;background:linear-gradient(var(--pencil),var(--pencil)) no-repeat 52.33% 0/1px 100%}
+.dot{position:absolute;top:50%;left:calc((var(--m) - 35)/30*100%);width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--data-2);box-shadow:0 0 0 2px var(--paper)}
+tr.em .dot{background:var(--data)}
+.axis{display:flex;justify-content:space-between}
+@media (max-width:30rem){.dots col.c{width:34%}.dots col.s{width:4.25rem}.dots col.m{width:3.5rem}}
+
+/* channel twin bars, both on 0 to 100% */
+.twin{width:100%;table-layout:fixed}
+.twin col.c{width:6rem}
+.tb{display:flex;align-items:center;gap:.5rem}
+.tb i{display:block;height:12px;width:calc(var(--w)*.7%);background:var(--data);border-radius:0 4px 4px 0;flex:none}
+
+.flow{list-style:none;padding:0;margin:1.5rem 0;display:flex;flex-wrap:wrap;gap:.5rem 0}
+.flow li+li::before{content:"";display:inline-block;width:1.5rem;border-top:1px solid var(--pencil);vertical-align:middle;margin:0 .625rem}
+
+footer{margin-top:6rem;padding-bottom:3rem}
+footer p{border-top:1px solid var(--rule);padding-top:1.5rem;max-width:none}
+
+@media (max-width:40rem){
+  body{font-size:1.0625rem}
+  h1{font-size:1.5rem}
+  h2{font-size:1.3125rem}
+  section,footer{margin-top:4rem}
+  .hero{padding-top:3rem}
+  .figures{grid-template-columns:1fr;gap:1.5rem;margin:2rem 0}
+  .figures li{display:grid;grid-template-columns:7.75rem 1fr;gap:.75rem;align-items:start}
+  .flow{flex-direction:column;border-left:1px solid var(--pencil);padding-left:.75rem}
+  .flow li+li::before{display:none}
+  .fig{font-size:3.5rem;margin:0}
+}
+@media (forced-colors:active){
+  .bar i,.dot,.tb i,.key i{forced-color-adjust:none;background:CanvasText}
+  .ghost{background:GrayText}
+}
+</style>
+</head>
+<body>
+<main>
+<header class="hero">
+  <h1>Product margin, corrected twice</h1>
+  <ol class="figures">
+    <li><s class="fig"><span class="vh">Course figure, wrong: </span>100%</s>
+      <p>The course filtered cost to unsold stock, then summed it only for sold stock, so cost was always zero.</p></li>
+    <li><s class="fig"><span class="vh">Course figure after the first fix, still wrong: </span>82.4%</s>
+      <p>With that filter fixed, cost came from inventory units, not the order lines that earned the sales. In this data, no order line points at a sold unit.</p></li>
+    <li><b class="fig"><span class="vh">Corrected: </span>50.7%</b>
+      <p>Sales and cost now come from the same order lines, leaving out cancelled and returned items.</p></li>
+  </ol>
+  <p>I rebuilt DataCamp's e-commerce case study in dbt and DuckDB and checked every model against the data.</p>
+  <p class="links"><a href="https://github.com/nightraven4545/dbt-ecommerce-data-models">Read the code</a> <a href="docs/">Browse the data catalog</a></p>
+</header>
+
+<section aria-labelledby="profit">
+  <h2 id="profit">Where the profit went</h2>
+  <p>The same 29,120 products, three versions of the model, on one scale.</p>
+  <ol class="ledger">
+    <li>
+      <p class="head"><b>Course, as taught</b><span>100%</span></p>
+      <div class="bar" aria-hidden="true"><i class="profit" style="--w:99.39"></i></div>
+      <p class="nums small muted">$2,087,255 of sales, $0 cost, $2,087,255 profit</p>
+    </li>
+    <li>
+      <p class="head"><b>Course, filter fixed</b><span>82.4%</span></p>
+      <div class="bar" aria-hidden="true"><i class="cost" style="--w:17.50"></i><i class="profit" style="--w:81.89"></i></div>
+      <p class="nums small muted">$2,087,255 of sales, $367,511 cost, $1,719,744 profit</p>
+    </li>
+    <li>
+      <p class="head"><b>This project</b><span>50.7%</span></p>
+      <div class="bar" aria-hidden="true"><i class="cost" style="--w:36.55"></i><i class="profit" style="--w:37.58"></i><i class="ghost" style="--w:25.26"></i></div>
+      <p class="nums small muted">$1,556,711 of sales, $767,490 cost, $789,221 profit; $530,544 of cancelled or returned sales no longer counted</p>
+    </li>
+  </ol>
+  <ul class="key small" aria-hidden="true">
+    <li><i class="cost"></i>Cost</li>
+    <li><i class="profit"></i>Profit</li>
+    <li><i class="ghost"></i>Cancelled or returned, no longer counted</li>
+  </ul>
+  <p>The fix also drops $531k of sales from cancelled or returned lines, a quarter of line revenue. Dollar amounts cover the sampled order lines, about half of all lines; margins don't depend on the sample.</p>
+  <figure>
+<pre tabindex="0"><code>kept_sales as (
+    select
+        product_id,
+        sum(sale_price) as sales_amount,
+        count(*) as units_sold
+    from {{ ref('stg_looker__order_items') }}
+<mark>    where status not in ('Cancelled', 'Returned')</mark>
+    group by product_id
+),</code></pre>
+    <figcaption>From <a href="https://github.com/nightraven4545/dbt-ecommerce-data-models/blob/main/models/marts/products.sql">models/marts/products.sql</a>. Cost is units sold times the product's unit cost, taken from the same lines.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="test">
+  <h2 id="test">A test keeps it fixed</h2>
+  <p>One dbt unit test gives the model four order lines for a product that costs $10.</p>
+  <table class="slip">
+    <caption class="vh">Unit test input and expected result</caption>
+    <thead><tr><th scope="col">Order line</th><th scope="col" class="n">Sale price</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Complete</th><td class="n">25</td></tr>
+      <tr><th scope="row">Shipped</th><td class="n">30</td></tr>
+      <tr><th scope="row"><s><span class="vh">Not counted: </span>Cancelled</s></th><td class="n"><s>99</s></td></tr>
+      <tr><th scope="row"><s><span class="vh">Not counted: </span>Returned</s></th><td class="n"><s>40</s></td></tr>
+    </tbody>
+    <tfoot>
+      <tr><th scope="row">Sales</th><td class="n">55</td></tr>
+      <tr><th scope="row">Cost, 2 &times; 10</th><td class="n">20</td></tr>
+      <tr><th scope="row">Profit</th><td class="n">35<s><span class="vh">, course logic: </span>194</s></td></tr>
+    </tfoot>
+  </table>
+  <p style="margin-top:1.5rem">The course's logic counts every line and no cost, so it returns 194. The test expects 35 and fails the build if the old logic comes back.</p>
+</section>
+
+<section aria-labelledby="faults">
+  <h2 id="faults">Four more faults</h2>
+  <div class="faults">
+    <div>
+      <h3>Snapshots could never record a change</h3>
+      <p>They watched <code>created_at</code>, which never changes. They now check status and the shipped, delivered and returned dates.</p>
+      <p class="wasnow"><s><span class="vh">Before: </span>created_at</s><span><span class="vh">Now: </span>status and 3 dates</span></p>
+    </div>
+    <div>
+      <h3>Session counts were yes-or-no flags</h3>
+      <p>Each customer was counted within their own row, so every value was 0 or 1. The model now counts sessions.</p>
+      <p class="wasnow"><s><span class="vh">Before: </span>0 or 1</s><span><span class="vh">Now: </span>1 to 6</span></p>
+    </div>
+    <div>
+      <h3>The customer table held one country</h3>
+      <p>A filter left over from an exercise kept only Australian customers. The table now covers all 49,999.</p>
+      <p class="wasnow"><s><span class="vh">Before: </span>Australia only</s><span><span class="vh">Now: </span>every country</span></p>
+    </div>
+    <div>
+      <h3>Some orders shipped before they were placed</h3>
+      <p>Three order timestamps loaded without a time zone, so on a machine outside UTC the dates fell out of order. Staging now reads them as UTC.</p>
+      <p class="wasnow"><s><span class="vh">Before: </span>no time zone</s><span><span class="vh">Now: </span>UTC</span></p>
+    </div>
+  </div>
+  <p style="margin-top:2.5rem">Smaller fixes: a <code>longtitude</code> typo, mixed-case column names, a user ID read as a float, and a Windows-only race when DuckDB installed its HTTP extension.</p>
+</section>
+
+<section aria-labelledby="answers">
+  <h2 id="answers">What the tables answer</h2>
+  <h3>Which categories keep the most of each sale?</h3>
+  <p>Margins run from 38% to 62%, but the bottom of that range is thin: Clothing Sets and Suits sold $2.3k between them. Among the big sellers, Accessories keeps 60% of each sale and Socks under 40%, on similar sales of $94k and $78k. Women's and men's ranges earn the same: 50.9% and 50.5%.</p>
+  <table class="dots">
+    <caption>Margin by category, all 26, from <code>products</code>. The line marks the 50.7% overall margin.</caption>
+    <colgroup><col class="c"><col class="s"><col class="m"><col></colgroup>
+    <thead><tr><th scope="col">Category</th><th scope="col" class="n">Sales</th><th scope="col" class="n">Margin</th><th scope="col"><span class="vh">Margin on a 35% to 65% scale</span><span class="axis" aria-hidden="true"><span>35%</span><span>65%</span></span></th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Blazers &amp; Jackets</th><td class="n">$16.0k</td><td class="n">62.0%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:62.0"></i></td></tr>
+      <tr><th scope="row">Skirts</th><td class="n">$21.0k</td><td class="n">60.3%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:60.3"></i></td></tr>
+      <tr><th scope="row">Socks &amp; Hosiery</th><td class="n">$43.6k</td><td class="n">59.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:59.9"></i></td></tr>
+      <tr class="em"><th scope="row">Accessories</th><td class="n">$94.0k</td><td class="n">59.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:59.9"></i></td></tr>
+      <tr><th scope="row">Suits &amp; Sport Coats</th><td class="n">$18.0k</td><td class="n">59.8%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:59.8"></i></td></tr>
+      <tr><th scope="row">Active</th><td class="n">$91.0k</td><td class="n">58.0%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:58.0"></i></td></tr>
+      <tr><th scope="row">Maternity</th><td class="n">$50.9k</td><td class="n">55.8%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:55.8"></i></td></tr>
+      <tr><th scope="row">Outerwear &amp; Coats</th><td class="n">$17.2k</td><td class="n">55.3%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:55.3"></i></td></tr>
+      <tr><th scope="row">Dresses</th><td class="n">$29.4k</td><td class="n">54.7%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:54.7"></i></td></tr>
+      <tr><th scope="row">Pants</th><td class="n">$48.9k</td><td class="n">54.1%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:54.1"></i></td></tr>
+      <tr><th scope="row">Underwear</th><td class="n">$124.5k</td><td class="n">53.0%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:53.0"></i></td></tr>
+      <tr><th scope="row">Sweaters</th><td class="n">$66.1k</td><td class="n">51.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:51.9"></i></td></tr>
+      <tr><th scope="row">Sleep &amp; Lounge</th><td class="n">$119.4k</td><td class="n">51.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:51.9"></i></td></tr>
+      <tr><th scope="row">Shorts</th><td class="n">$105.4k</td><td class="n">49.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:49.9"></i></td></tr>
+      <tr><th scope="row">Plus</th><td class="n">$43.0k</td><td class="n">49.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:49.9"></i></td></tr>
+      <tr><th scope="row">Fashion Hoodies &amp; Sweatshirts</th><td class="n">$81.2k</td><td class="n">49.4%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:49.4"></i></td></tr>
+      <tr><th scope="row">Swim</th><td class="n">$88.2k</td><td class="n">47.4%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:47.4"></i></td></tr>
+      <tr><th scope="row">Jumpsuits &amp; Rompers</th><td class="n">$8.2k</td><td class="n">47.3%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:47.3"></i></td></tr>
+      <tr><th scope="row">Intimates</th><td class="n">$157.0k</td><td class="n">47.0%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:47.0"></i></td></tr>
+      <tr><th scope="row">Pants &amp; Capris</th><td class="n">$31.8k</td><td class="n">46.9%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:46.9"></i></td></tr>
+      <tr><th scope="row">Jeans</th><td class="n">$50.4k</td><td class="n">46.6%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:46.6"></i></td></tr>
+      <tr><th scope="row">Tops &amp; Tees</th><td class="n">$137.8k</td><td class="n">44.0%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:44.0"></i></td></tr>
+      <tr><th scope="row">Leggings</th><td class="n">$33.3k</td><td class="n">39.8%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:39.8"></i></td></tr>
+      <tr class="em"><th scope="row">Socks</th><td class="n">$77.9k</td><td class="n">39.7%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:39.7"></i></td></tr>
+      <tr><th scope="row">Suits</th><td class="n">$1.6k</td><td class="n">39.4%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:39.4"></i></td></tr>
+      <tr><th scope="row">Clothing Sets</th><td class="n">$0.7k</td><td class="n">38.3%</td><td class="plot" aria-hidden="true"><i class="dot" style="--m:38.3"></i></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Does the marketing channel matter?</h3>
+  <p>Search brings in 70% of customers. In every channel about 27% of customers have a completed order, so the channel decides how many customers arrive, not how likely they are to buy.</p>
+  <table class="twin">
+    <caption>Customers by the channel that brought them in, from <code>customers</code>. Both columns use the same 0 to 100% scale.</caption>
+    <colgroup><col class="c"><col><col></colgroup>
+    <thead><tr><th scope="col">Channel</th><th scope="col">Share of customers</th><th scope="col">With a completed order</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Search</th><td><span class="tb"><i style="--w:70.0"></i>70.0%</span></td><td><span class="tb"><i style="--w:27.5"></i>27.5%</span></td></tr>
+      <tr><th scope="row">Organic</th><td><span class="tb"><i style="--w:15.2"></i>15.2%</span></td><td><span class="tb"><i style="--w:27.2"></i>27.2%</span></td></tr>
+      <tr><th scope="row">Facebook</th><td><span class="tb"><i style="--w:5.8"></i>5.8%</span></td><td><span class="tb"><i style="--w:27.8"></i>27.8%</span></td></tr>
+      <tr><th scope="row">Email</th><td><span class="tb"><i style="--w:5.0"></i>5.0%</span></td><td><span class="tb"><i style="--w:26.8"></i>26.8%</span></td></tr>
+      <tr><th scope="row">Display</th><td><span class="tb"><i style="--w:4.0"></i>4.0%</span></td><td><span class="tb"><i style="--w:27.5"></i>27.5%</span></td></tr>
+    </tbody>
+  </table>
+  <p class="small muted" style="margin-top:.75rem">Completed-order share counts every customer in the channel, whether they ordered or not. Across all 49,999 customers it is 27.4%.</p>
+</section>
+
+<section aria-labelledby="built">
+  <h2 id="built">How it's built</h2>
+  <p>The project runs on dbt-core 1.12 and DuckDB. There is no warehouse and no load step: dbt reads six CSV files over HTTPS during the build, so the whole thing runs with one command.</p>
+  <ol class="flow small">
+    <li>6 CSV sources and 1 seed</li>
+    <li>7 staging tables</li>
+    <li>2 ephemeral pivots</li>
+    <li>customers and products</li>
+  </ol>
+  <p>Two snapshots record changes to orders and inventory.</p>
+  <figure>
+<pre tabindex="0"><code>$ dbt build
+Done. PASS=60 WARN=0 ERROR=0 SKIP=0 NO-OP=1 REUSED=0 TOTAL=61</code></pre>
+  </figure>
+  <p>That run covers 47 data tests and 1 unit test, including a not-null test on product cost so a missing cost can't silently become zero. The one no-op is this page, declared as a dbt exposure so it shows up in the lineage. GitHub Actions runs the same build on every pull request, and this site is rebuilt from it on every push.</p>
+  <p><a href="docs/#!/exposure/exposure.looker_ecommerce.project_site">See this page in the data catalog</a></p>
+</section>
+
+<section aria-labelledby="data">
+  <h2 id="data">About the data</h2>
+  <p>TheLook is a synthetic store published by Google; none of its customers are real people. The build reads DataCamp's copy over HTTPS, and the repository stores none of the raw files.</p>
+  <p>Two files are samples. <code>order_items</code> holds about half of all order lines, so dollar amounts here are partial and margins are not. <code>events</code> holds about 2% of events, so session counts are a relative signal only.</p>
+</section>
+</main>
+<footer>
+  <p class="small links">Built by <a href="https://github.com/nightraven4545">nightraven4545</a>. <a href="https://github.com/nightraven4545/dbt-ecommerce-data-models">Read the code</a> <a href="docs/">Browse the data catalog</a></p>
+</footer>
+</body>
+</html>
