@@ -6,7 +6,7 @@ This project turns raw e-commerce exports into tested, documented **customer** a
 
 It is built with dbt-core 1.12 on DuckDB, needs no warehouse or credentials, and runs with one command. CI rebuilds the project and runs every test on each pull request and each push to `main`; pushes to `main` also republish the data catalog.
 
-**[Browse the live data catalog and lineage graph →](https://nightraven4545.github.io/dbt-ecommerce-data-models/)**
+**[Read the case study →](https://dbt-ecommerce-data-models.vercel.app/)** · [Browse the live data catalog and lineage graph](https://nightraven4545.github.io/dbt-ecommerce-data-models/)
 
 ## What it answers
 
@@ -133,6 +133,8 @@ seeds/                     distribution centers (10 rows)
 snapshots/                 order and inventory history
 dbt_project.yml            materializations per layer
 profiles.yml               local DuckDB file, no secrets
+public/                    the case-study page (static HTML, no JS); Vercel adds the docs at /docs/
+vercel.json                Vercel build: dbt build, then docs into public/docs/
 ```
 
 ## Data source and licence
@@ -143,5 +145,6 @@ profiles.yml               local DuckDB file, no secrets
   - `order_items` holds about half of all order lines, so absolute sales and spend are partial. Margins and order counts are unaffected; order counts come from the complete `orders` file.
   - `events` holds about 2% of events, so session counts are a relative signal only.
   - some orders reference customers who are not in the `users` sample.
+- The case-study page (`public/`) is set in [Archivo](https://fonts.google.com/specimen/Archivo) by Omnibus-Type, self-hosted under the SIL Open Font License 1.1.
 - `seeds/looker__distribution_centers.csv` matches the generator seed in [GoogleCloudPlatform/public-datasets-pipelines](https://github.com/GoogleCloudPlatform/public-datasets-pipelines/tree/main/datasets/thelook_ecommerce), which is licensed under Apache-2.0.
 - The snapshots currently hold one version per row. The source files are static and CI starts from a fresh database, so history only builds up when they point at a live source.
